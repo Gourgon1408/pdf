@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.streamlit/secrets.toml
+*.py[cod]
+*.pdf
+*.docx
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.tmp
