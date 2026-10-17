@@ -25,11 +25,17 @@ def word_to_pdf(data: bytes) -> bytes:
             folder = Path(tmp)
             source = folder / "input.docx"
             source.write_bytes(data)
-            result = subprocess.run([binary, "--headless", "--convert-to", "pdf", "--outdir", str(folder), str(source)], capture_output=True, text=True, timeout=90, check=False)
+            profile = folder / "lo-profile"
+            result = subprocess.run(
+                [binary, "--headless", f"-env:UserInstallation={profile.as_uri()}", "--convert-to", "pdf", "--outdir", str(folder), str(source)],
+                capture_output=True,
+                text=True,
+                timeout=90,
+                check=False,
+            )
             target = folder / "input.pdf"
             if result.returncode != 0 or not target.is_file() or target.stat().st_size == 0:
-                detail = (result.stderr or result.stdout or "").strip()
-                raise ConversionError(f"LibreOffice could not convert this document.{(' ' + detail[:250]) if detail else ''}")
+                raise ConversionError("LibreOffice could not convert this document. Check that the DOCX file is valid and try again.")
             payload = target.read_bytes()
             if len(payload) > MAX_OUTPUT_BYTES:
                 raise ConversionError("The generated PDF exceeds the 200 MB output limit.")

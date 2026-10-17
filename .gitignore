@@ -2,6 +2,9 @@
 __pycache__/
 .pytest_cache/
 .streamlit/secrets.toml
+.env
+.env.*
+!.env.example
 *.py[cod]
 *.pdf
 *.docx
@@ -10,3 +13,6 @@ __pycache__/
 *.jpg
 *.jpeg
 *.tmp
+tmp/
+uploads/
+output/

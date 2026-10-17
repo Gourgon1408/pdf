@@ -1,0 +1,11 @@
+[server]
+headless = true
+maxUploadSize = 50
+maxMessageSize = 60
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"

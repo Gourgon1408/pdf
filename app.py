@@ -29,13 +29,13 @@ h1,h2,h3 { font-family:ui-sans-serif,system-ui,-apple-system,sans-serif !importa
 
 TOOLS = ["PDF to Images", "Images to PDF", "PDF to Word", "Word to PDF", "Merge PDFs", "Split PDF"]
 st.sidebar.markdown("## 📄 Paperplane")
-st.sidebar.caption("PRIVATE · LOCAL DOCUMENT TOOLS")
+st.sidebar.caption("PRIVATE · DOCUMENT TOOLS")
 tool = st.sidebar.radio("Choose a tool", TOOLS, label_visibility="collapsed")
 st.sidebar.divider()
-st.sidebar.markdown("**Your files stay local**")
-st.sidebar.caption("The Python app on this Mac processes your documents. Files are handled in memory or temporary folders and are not sent to a conversion service.")
+st.sidebar.markdown("**Processed by this service**")
+st.sidebar.caption("Documents are processed by this Paperplane server without external conversion APIs. Temporary conversion files are cleaned up. Uploaded and generated content may remain in the active session's memory until the session expires.")
 st.sidebar.caption("50 MB per file · 500 pages per PDF")
-st.markdown('<div class="hero"><h1>Documents, in good hands.</h1><p>Six practical PDF tools. Private by design, processed right here on your Mac.</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="hero"><h1>Documents, in good hands.</h1><p>Six practical PDF tools, processed by this service without external conversion APIs.</p></div>', unsafe_allow_html=True)
 intro = {
 "PDF to Images": ("Turn PDF pages into images", "Export every page as a crisp PNG or JPG, bundled in one ZIP."),
 "Images to PDF": ("Bring images together", "Combine JPG, PNG, WebP, BMP, or TIFF images into a single PDF."),
@@ -90,7 +90,7 @@ elif tool == "PDF to Word":
             st.success("Word document is ready")
             st.download_button("Download DOCX", result, f"{Path(f.name).stem}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary")
 elif tool == "Word to PDF":
-    if libreoffice_path(): st.info("LibreOffice detected · conversion runs on this Mac.")
+    if libreoffice_path(): st.info("LibreOffice detected · conversion runs on this server.")
     else: st.warning("LibreOffice is not installed. Install it to use this conversion.")
     f = upload("Choose a Word document", ["docx"])
     if f: describe([f])
@@ -123,4 +123,4 @@ elif tool == "Split PDF":
                     st.download_button("Download extracted PDF", data, "extracted-pages.pdf", "application/pdf", type="primary")
 
 st.divider()
-st.caption("Paperplane runs on localhost. Streamlit transfers uploaded files to the local Python process; conversions run on this computer.")
+st.caption("Paperplane processes uploads on the server hosting this app. No third-party conversion API is used; do not upload documents unless you trust the service operator.")

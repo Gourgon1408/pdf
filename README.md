@@ -1,26 +1,23 @@
-# Paperplane — local PDF converter
+# Paperplane PDF Converter
 
-A local-first Streamlit app for common PDF and image conversions. Documents are processed by Python on your Mac using local libraries; they are not sent to a conversion API. Streamlit sends uploads from the browser to the local Python server. The app binds to `127.0.0.1` by default and uses memory or temporary directories, which are removed after each conversion.
+Paperplane is a Streamlit app with six PDF and image conversion tools. It processes documents with local Python libraries and LibreOffice; it does not call a third-party conversion API. When deployed to Render, processing happens on the Render service, not on a visitor's device. The service does not intentionally retain uploaded files: conversion working directories are temporary and removed after each job. Uploaded and generated data may remain in Streamlit's server memory while the visitor's session is active.
 
 ## Features
 
-- PDF to PNG or JPG, adjustable 72–300 DPI, all pages in a ZIP.
-- JPG, JPEG, PNG, WebP, BMP, and TIFF images to one PDF, preserving upload order and flattening transparency over white.
-- PDF to editable DOCX using pdf2docx. Complex layouts may need corrections; scans are not OCR processed.
-- DOCX to PDF through local LibreOffice headless mode.
-- Merge two or more valid PDFs in displayed selection order.
-- Extract an inclusive page range from a PDF.
-- 50 MB per input file, 500 pages per PDF, 20 PDFs per merge, 100 images per image-to-PDF operation (100 MB combined image inputs), and a 200 MB output cap by default.
+- Convert every PDF page to PNG or JPG at 72–300 DPI and download the results as a ZIP.
+- Combine JPG, JPEG, PNG, WebP, BMP, and TIFF images into a PDF in upload order; transparent pixels are flattened onto white.
+- Convert text-based PDFs to editable DOCX with pdf2docx. Complex layouts can need corrections; OCR is not included.
+- Convert DOCX to PDF with LibreOffice Writer in headless mode.
+- Merge PDFs in the displayed upload order and extract inclusive page ranges.
+- Validate PDFs and images, reject password-protected PDFs, and clean up conversion working directories on success or failure.
+- Default limits: 50 MB per file, 500 pages per PDF, 100 MB total input for image-to-PDF, 20 PDFs per merge, and 200 MB per output.
 
-## Prerequisites
+## Run locally on macOS
 
-Use Python 3.11 or 3.12 (the pinned conversion libraries may not yet support newer Python releases). Install LibreOffice if you need Word to PDF. On macOS, download it from [libreoffice.org](https://www.libreoffice.org/download/download/) or use Homebrew: `brew install --cask libreoffice`.
-
-## macOS setup
-
-From this `pdf/` directory:
+Use Python 3.11 or 3.12. Install LibreOffice if you need Word-to-PDF locally; the Docker image includes it automatically.
 
 ```bash
+cd ~/my-python-project/pdf
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -28,25 +25,52 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-Open <http://localhost:8501>. Streamlit binds to localhost by default. Keep the terminal open while using the app; press Control-C to stop it.
+Open <http://localhost:8501>. The local Streamlit server uses port 8501 by default. Press Control-C in the terminal to stop it.
 
-## Tests
+## Test locally
 
 ```bash
+cd ~/my-python-project/pdf
 source .venv/bin/activate
-python -m pytest
+python -m pytest -ra
 ```
 
-Tests create their own sample PDFs and images. The DOCX-to-PDF integration test is skipped when LibreOffice is unavailable; missing-LibreOffice behavior is tested regardless.
+Tests generate their own PDFs and images. The DOCX-to-PDF integration test skips only when no LibreOffice executable is present.
 
-## Limitations and troubleshooting
+## Build and run with Docker
 
-- PDF-to-Word recreates text and layout heuristically. Complex tables, columns, and scanned pages may not convert well. No OCR is implemented.
-- Password-protected PDFs are rejected with a clear message; the app does not bypass document security.
-- Animated image files use their first frame.
-- If a conversion fails, verify the source opens normally and is within the file/page limits. For Word-to-PDF, confirm LibreOffice is installed and available as `libreoffice` or `soffice`, then restart Streamlit.
-- Conversion libraries and PDFs can consume substantial memory. Keep within the stated limits for predictable processing.
+Install and start Docker Desktop, then run these commands from the project directory:
 
-## Configuration
+```bash
+cd ~/my-python-project/pdf
+docker build -t paperplane .
+docker run --rm --name paperplane -p 10000:10000 -e PORT=10000 paperplane
+```
 
-The main limits are defined in `src/pdf_converter/__init__.py`. The app uses Streamlit's localhost default; do not add a public network bind when running with sensitive files. The interface uses local system fonts and does not request external assets.
+Open <http://localhost:10000>. Docker installs LibreOffice Writer and fonts in the image, so no host LibreOffice installation is needed. The container runs as an unprivileged user, binds to `0.0.0.0`, limits uploads to 50 MB, hides Streamlit error details, and includes a Docker health check. Set a different `PORT` environment variable and publish the same host port to test another port, for example `-p 10001:10001 -e PORT=10001`.
+
+## Deploy to Render
+
+The project root contains a Dockerfile. Render's Docker runtime builds it and runs the Dockerfile `CMD`; the app binds to `0.0.0.0` on Render's `PORT` value (defaulting to 10000 in the image). See Render's [Docker deployment guide](https://render.com/docs/docker) and [web service port requirements](https://render.com/docs/web-services#port-binding).
+
+1. Push this project to a Git repository accessible to Render.
+2. In the Render Dashboard, choose **New → Web Service**, then connect that repository.
+3. Set **Language** to **Docker**. If `pdf/` is a subdirectory in the connected repository, set the **Root Directory** to `pdf`; if it is the repository root, leave Root Directory blank.
+4. Set **Dockerfile Path** to `./Dockerfile` relative to the selected root directory. Leave the Docker command and build command blank so Render uses the Dockerfile.
+5. In **Advanced → Health Check Path**, set `/_stcore/health`.
+6. Create the service. Render supplies `PORT`; no application secrets or external conversion API keys are required.
+
+The service's generated `https://…onrender.com` address is the public URL. For HTTP health checks, Render accepts any 2xx or 3xx response from the configured path; see the [Render health check guide](https://render.com/docs/health-checks).
+
+## Dependency notes
+
+`requirements.txt` lists the application libraries and pytest. Streamlit, PyMuPDF (`fitz`), Pillow, python-docx, and pdf2docx are directly used by the app or its tests. pdf2docx brings its conversion dependencies (including OpenCV, NumPy, lxml, and fonttools) transitively through pip. LibreOffice is an operating-system package installed in the Docker image, not a pip package.
+
+## Limitations and privacy
+
+- PDF-to-Word recreates text and layout heuristically. Scanned PDFs are not OCR processed.
+- Password-protected PDFs are rejected; the app does not bypass document security.
+- Animated image formats use their first frame.
+- On Render, uploaded documents are sent to and processed by the deployed Paperplane server. Conversion job directories are temporary, but Streamlit can keep upload/download objects in session memory until that session ends. Do not upload documents unless you trust the service operator.
+- Render's container filesystem is ephemeral unless a persistent disk is explicitly added. This app does not require a persistent disk and should be deployed without one.
+- Adjust limits in `src/pdf_converter/__init__.py` and Streamlit's upload limit in `.streamlit/config.toml` together.
